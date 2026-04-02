@@ -14,6 +14,11 @@ object ConfigurationRedactor {
       |    sonarrBypassIgnored: ${config.sonarrConfiguration.sonarrBypassIgnored}
       |    sonarrLanguageProfileId: ${config.sonarrConfiguration.sonarrLanguageProfileId}
       |    sonarrTagIds: ${config.sonarrConfiguration.sonarrTagIds.mkString(",")}
+      |    sonarrCategoryOverrides: ${config.sonarrConfiguration.sonarrCategoryOverrides
+          .map(rule =>
+            s"${rule.name}[genres=${rule.genres.toList.sorted.mkString("|")}, qualityProfileId=${rule.qualityProfileId}, rootFolder=${rule.rootFolder}]"
+          )
+          .mkString(", ")}
       |
       |  RadarrConfiguration:
       |    radarrBaseUrl: ${config.radarrConfiguration.radarrBaseUrl}

@@ -33,6 +33,13 @@ trait SonarrUtils extends SonarrConversions {
     val qualityProfileId      = maybeCategoryOverride.map(_.qualityProfileId).getOrElse(config.sonarrQualityProfileId)
     val rootFolder            = maybeCategoryOverride.map(_.rootFolder).getOrElse(config.sonarrRootFolder)
 
+    logger.info(
+      s"Preparing ${item.title} for Sonarr with Plex genres: ${item.genres.toList.sorted.mkString(", ")}"
+    )
+    logger.info(
+      s"Using Sonarr qualityProfileId=$qualityProfileId and rootFolder=$rootFolder for ${item.title}"
+    )
+
     val addOptions = SonarrAddOptions(config.sonarrSeasonMonitoring)
     val show = SonarrPost(
       item.title,
@@ -60,6 +67,13 @@ trait SonarrUtils extends SonarrConversions {
     val maybeRule = config.sonarrCategoryOverrides.find(rule => item.hasAnyGenre(rule.genres))
     maybeRule.foreach { rule =>
       logger.info(s"Matched Sonarr category override '${rule.name}' for ${item.title}")
+    }
+    if (maybeRule.isEmpty && config.sonarrCategoryOverrides.nonEmpty) {
+      logger.info(
+        s"No Sonarr category override matched for ${item.title}. Configured genres: ${config.sonarrCategoryOverrides
+            .map(rule => s"${rule.name}=${rule.genres.toList.sorted.mkString("|")}")
+            .mkString(", ")}"
+      )
     }
     maybeRule
   }
