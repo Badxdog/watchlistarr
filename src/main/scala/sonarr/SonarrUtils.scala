@@ -2,7 +2,7 @@ package sonarr
 
 import cats.data.EitherT
 import cats.effect.IO
-import configuration.SonarrConfiguration
+import configuration.{SonarrCategoryOverride, SonarrConfiguration}
 import http.HttpClient
 import io.circe.{Decoder, Json}
 import io.circe.generic.auto._
@@ -29,13 +29,16 @@ trait SonarrUtils extends SonarrConversions {
     } yield (shows.map(toItem) ++ exclusions.map(toItem)).toSet
 
   protected def addToSonarr(client: HttpClient)(config: SonarrConfiguration)(item: Item): IO[Unit] = {
+    val maybeCategoryOverride = selectCategoryOverride(config, item)
+    val qualityProfileId      = maybeCategoryOverride.map(_.qualityProfileId).getOrElse(config.sonarrQualityProfileId)
+    val rootFolder            = maybeCategoryOverride.map(_.rootFolder).getOrElse(config.sonarrRootFolder)
 
     val addOptions = SonarrAddOptions(config.sonarrSeasonMonitoring)
     val show = SonarrPost(
       item.title,
       item.getTvdbId.getOrElse(0L),
-      config.sonarrQualityProfileId,
-      config.sonarrRootFolder,
+      qualityProfileId,
+      rootFolder,
       addOptions,
       config.sonarrLanguageProfileId,
       tags = config.sonarrTagIds.toList
@@ -51,6 +54,14 @@ trait SonarrUtils extends SonarrConversions {
       logger.info(s"Sent ${item.title} to Sonarr")
       r
     }
+  }
+
+  private def selectCategoryOverride(config: SonarrConfiguration, item: Item): Option[SonarrCategoryOverride] = {
+    val maybeRule = config.sonarrCategoryOverrides.find(rule => item.hasAnyGenre(rule.genres))
+    maybeRule.foreach { rule =>
+      logger.info(s"Matched Sonarr category override '${rule.name}' for ${item.title}")
+    }
+    maybeRule
   }
 
   protected def deleteFromSonarr(client: HttpClient, config: SonarrConfiguration, deleteFiles: Boolean)(

@@ -106,6 +106,13 @@ Once this command runs successfully, you will see the `config.yaml` file in the 
 #  seasonMonitoring: all # Possible values under 'MonitorTypes' in sonarr.tv/docs/api. DEFAULT: all
 #  tags:
 #    - watchlistarr
+#  categoryOverrides:
+#    anime:
+#      genres:
+#        - Animation
+#        - Anime
+#      qualityProfile: "Anime"
+#      rootFolder: "/data/media/anime"
 ```
 
 You'll notice that everything is commented out for now. A comment in a yaml file starts with a `#`. If you're new to yaml files, I would recommend you do some reading online to understand what you're configuring. I would also recommend using a yaml linter such as [yamllint.com](https://www.yamllint.com/) to make sure that your yaml file is valid before you save the config.
@@ -121,6 +128,29 @@ sonarr:
 ```
 
 Now if you save the file and restart Watchlistarr, the new configuration will be used.
+
+If you want to route certain Plex watchlist shows to a different Sonarr profile or root folder, you can use
+`sonarr.categoryOverrides`. Watchlistarr matches these rules against the Plex genres returned for the watchlisted show.
+
+For example, if your Plex metadata marks a show as `Animation` or `Anime`, you can send it to a separate Anime profile
+and library path:
+
+```yaml
+sonarr:
+  qualityProfile: "HD - 720p/1080p"
+  rootFolder: "/data/media/tv"
+  categoryOverrides:
+    anime:
+      genres:
+        - Animation
+        - Anime
+      qualityProfile: "Anime"
+      rootFolder: "/data/media/anime"
+```
+
+In the example above, any matching watchlisted show will be added to Sonarr using the `Anime` quality profile and the
+`/data/media/anime` root folder. Shows that do not match any override will continue to use the default
+`sonarr.qualityProfile` and `sonarr.rootFolder`.
 
 Note: You are able to simplify your docker command if you wanted to provide the API keys and Plex token within configuration instead of via environment variables. The config.yaml file should have these lines:
 ```yaml

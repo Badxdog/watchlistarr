@@ -75,6 +75,13 @@ class ItemSpec extends AnyFlatSpec with Matchers {
     item.getTmdbId shouldBe Some(12345L)
   }
 
+  "Item.hasAnyGenre" should "match genres case-insensitively" in {
+    val item = Item(punch, List(punch), punch, genres = Set("Animation", "Drama"))
+
+    item.hasAnyGenre(Set("anime", "animation")) shouldBe true
+    item.hasAnyGenre(Set("thriller")) shouldBe false
+  }
+
   it should "return none if there is no tmdbId" in {
     val item = Item(punch, List(punch, "tvdb://12345"), punch)
 

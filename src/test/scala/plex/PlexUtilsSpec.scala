@@ -114,7 +114,12 @@ class PlexUtilsSpec extends AnyFlatSpec with Matchers with PlexUtils with MockFa
     eitherResult shouldBe a[Right[_, _]]
     val result = eitherResult.getOrElse(Set.empty[Item])
     result.size shouldBe 2
-    result.head shouldBe Item("The Test", List("imdb://tt11347692", "tmdb://95837", "tvdb://372848"), "show")
+    result.head shouldBe Item(
+      "The Test",
+      List("imdb://tt11347692", "tmdb://95837", "tvdb://372848"),
+      "show",
+      genres = Set("Documentary", "Sport", "Drama")
+    )
   }
 
   it should "successfully fetch an empty watchlist using the plex token" in {
@@ -181,7 +186,12 @@ class PlexUtilsSpec extends AnyFlatSpec with Matchers with PlexUtils with MockFa
     eitherResult shouldBe a[Right[_, _]]
     val result = eitherResult.getOrElse(Set.empty[Item])
     result.size shouldBe 1
-    result.head shouldBe Item("The Test", List("imdb://tt11347692", "tmdb://95837", "tvdb://372848"), "show")
+    result.head shouldBe Item(
+      "The Test",
+      List("imdb://tt11347692", "tmdb://95837", "tvdb://372848"),
+      "show",
+      genres = Set("Documentary", "Sport", "Drama")
+    )
   }
 
   it should "successfully fetch friends from Plex" in {

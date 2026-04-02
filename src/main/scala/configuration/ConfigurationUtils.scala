@@ -29,7 +29,15 @@ object ConfigurationUtils {
     val config = for {
       sonarrConfig <- getSonarrConfig(configReader, client)
       refreshInterval = configReader.getConfigOption(Keys.intervalSeconds).flatMap(_.toIntOption).getOrElse(60).seconds
-      (sonarrBaseUrl, sonarrApiKey, sonarrQualityProfileId, sonarrRootFolder, sonarrLanguageProfileId, sonarrTagIds) =
+      (
+        sonarrBaseUrl,
+        sonarrApiKey,
+        sonarrQualityProfileId,
+        sonarrRootFolder,
+        sonarrLanguageProfileId,
+        sonarrTagIds,
+        sonarrCategoryOverrides
+      ) =
         sonarrConfig
       sonarrBypassIgnored    = configReader.getConfigOption(Keys.sonarrBypassIgnored).exists(_.toBoolean)
       sonarrSeasonMonitoring = configReader.getConfigOption(Keys.sonarrSeasonMonitoring).getOrElse("all")
@@ -58,7 +66,8 @@ object ConfigurationUtils {
         sonarrBypassIgnored,
         sonarrSeasonMonitoring,
         sonarrLanguageProfileId,
-        sonarrTagIds
+        sonarrTagIds,
+        sonarrCategoryOverrides
       ),
       RadarrConfiguration(
         radarrBaseUrl,
@@ -115,7 +124,7 @@ object ConfigurationUtils {
   private def getSonarrConfig(
       configReader: ConfigurationReader,
       client: HttpClient
-  ): IO[(Uri, String, Int, String, Int, Set[Int])] = {
+  ): IO[(Uri, String, Int, String, Int, Set[Int], List[SonarrCategoryOverride])] = {
     val apiKey = configReader.getConfigOption(Keys.sonarrApiKey).getOrElse(throwError("Unable to find sonarr API key"))
     val configuredUrl = configReader.getConfigOption(Keys.sonarrBaseUrl)
     val possibleUrls: Seq[String] =
@@ -123,22 +132,23 @@ object ConfigurationUtils {
 
     for {
       url <- findCorrectUrl(client)(possibleUrls, apiKey)
-      rootFolder <- toArr(client)(url, apiKey, "rootFolder").map {
+      rootFolderResponse <- toArr(client)(url, apiKey, "rootFolder")
+      allRootFolders = rootFolderResponse match {
         case Right(res) =>
           logger.info("Successfully connected to Sonarr")
-          val allRootFolders = res.as[List[RootFolder]].getOrElse(List.empty)
-          selectRootFolder(allRootFolders, configReader.getConfigOption(Keys.sonarrRootFolder))
+          res.as[List[RootFolder]].getOrElse(List.empty)
         case Left(err) =>
           throwError(s"Unable to connect to Sonarr at $url, with error $err")
       }
-      qualityProfileId <- toArr(client)(url, apiKey, "qualityprofile").map {
+      rootFolder = selectRootFolder(allRootFolders, configReader.getConfigOption(Keys.sonarrRootFolder))
+      qualityProfileResponse <- toArr(client)(url, apiKey, "qualityprofile")
+      allQualityProfiles = qualityProfileResponse match {
         case Right(res) =>
-          val allQualityProfiles   = res.as[List[QualityProfile]].getOrElse(List.empty)
-          val chosenQualityProfile = configReader.getConfigOption(Keys.sonarrQualityProfile)
-          getQualityProfileId(allQualityProfiles, chosenQualityProfile)
+          res.as[List[QualityProfile]].getOrElse(List.empty)
         case Left(err) =>
           throwError(s"Unable to connect to Sonarr at $url, with error $err")
       }
+      qualityProfileId = getQualityProfileId(allQualityProfiles, configReader.getConfigOption(Keys.sonarrQualityProfile))
       languageProfileId <- toArr(client)(url, apiKey, "languageprofile").map {
         case Right(res) =>
           val allLanguageProfiles = res.as[List[LanguageProfile]].getOrElse(List.empty)
@@ -153,7 +163,58 @@ object ConfigurationUtils {
         .getConfigOption(Keys.sonarrTags)
         .map(getTagIdsFromConfig(client, url, apiKey))
         .getOrElse(IO.pure(Set.empty[Int]))
-    } yield (url, apiKey, qualityProfileId, rootFolder, languageProfileId, tagIds)
+      categoryOverrides = getSonarrCategoryOverrides(
+        configReader,
+        allQualityProfiles,
+        allRootFolders,
+        qualityProfileId,
+        rootFolder
+      )
+    } yield (url, apiKey, qualityProfileId, rootFolder, languageProfileId, tagIds, categoryOverrides)
+  }
+
+  private def getSonarrCategoryOverrides(
+      configReader: ConfigurationReader,
+      allQualityProfiles: List[QualityProfile],
+      allRootFolders: List[RootFolder],
+      defaultQualityProfileId: Int,
+      defaultRootFolder: String
+  ): List[SonarrCategoryOverride] = {
+    val prefix = s"${Keys.sonarrCategoryOverrides}."
+    val rawOverrides = configReader.getConfigOptionsWithPrefix(prefix)
+
+    rawOverrides.keys
+      .flatMap(_.stripPrefix(prefix).split("\\.").headOption)
+      .toSet
+      .toList
+      .sorted
+      .map { name =>
+        val rulePrefix     = s"$prefix$name."
+        val genresKey      = s"${rulePrefix}genres"
+        val qualityKey     = s"${rulePrefix}qualityProfile"
+        val rootFolderKey  = s"${rulePrefix}rootFolder"
+        val genres = rawOverrides
+          .get(genresKey)
+          .map(_.split(',').map(_.trim).filter(_.nonEmpty).toSet)
+          .getOrElse(throwError(s"Sonarr category override '$name' is missing genres"))
+
+        val qualityProfileId = rawOverrides.get(qualityKey) match {
+          case Some(profileName) => getQualityProfileId(allQualityProfiles, Some(profileName))
+          case None              => defaultQualityProfileId
+        }
+
+        val rootFolder = rawOverrides.get(rootFolderKey) match {
+          case Some(path) => selectRootFolder(allRootFolders, Some(path))
+          case None       => defaultRootFolder
+        }
+
+        SonarrCategoryOverride(
+          name = name,
+          genres = genres,
+          qualityProfileId = qualityProfileId,
+          rootFolder = rootFolder
+        )
+      }
   }
 
   private def getRadarrConfig(

@@ -10,6 +10,7 @@ private[configuration] object Keys {
   val sonarrBypassIgnored    = "sonarr.bypassIgnored"
   val sonarrSeasonMonitoring = "sonarr.seasonMonitoring"
   val sonarrTags             = "sonarr.tags"
+  val sonarrCategoryOverrides = "sonarr.categoryOverrides"
 
   val radarrBaseUrl        = "radarr.baseUrl"
   val radarrApiKey         = "radarr.apikey"

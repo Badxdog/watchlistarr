@@ -55,6 +55,9 @@ object FileAndSystemPropertyReader extends ConfigurationReader {
     else
       SystemPropertyReader.getConfigOption(key)
 
+  override def getConfigOptionsWithPrefix(prefix: String): Map[String, String] =
+    SystemPropertyReader.getConfigOptionsWithPrefix(prefix) ++ data.filter { case (key, _) => key.startsWith(prefix) }
+
   private def flattenYaml(yaml: Map[String, _]): Map[String, String] = yaml.flatMap {
     case (k, v: util.ArrayList[_]) =>
       List((k, v.asScala.mkString(",")))

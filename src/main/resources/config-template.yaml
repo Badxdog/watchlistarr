@@ -36,6 +36,17 @@
 #  tags:
 #    - watchlistarr
 
+## Optional category overrides matched against Plex genres.
+## Rule names are arbitrary; genres can be a single value or a list.
+## If qualityProfile/rootFolder are omitted, the default Sonarr settings above are used.
+#  categoryOverrides:
+#    anime:
+#      genres:
+#        - Animation
+#        - Anime
+#      qualityProfile: "Anime"
+#      rootFolder: "/data/media/anime"
+
 
 #################################################################
 ## Radarr Configuration

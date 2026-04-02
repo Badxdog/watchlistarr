@@ -219,7 +219,7 @@ trait PlexUtils {
       guids = result.MediaContainer.Metadata.flatMap(_.Guid.map(_.id))
     } yield guids
 
-    guids.map(ids => Item(i.title, ids, i.`type`, ended = None))
+    guids.map(ids => Item(i.title, ids, i.`type`, ended = None, genres = i.Genre.map(_.tag).toSet))
   }
 
   private def cleanKey(path: String): String =
