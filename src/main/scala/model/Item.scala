@@ -7,6 +7,15 @@ case class Item(
     ended: Option[Boolean] = None,
     genres: Set[String] = Set.empty
 ) {
+  def mergeWith(that: Item): Item =
+    Item(
+      title = if (this.title.nonEmpty) this.title else that.title,
+      guids = (this.guids ++ that.guids).distinct,
+      category = this.category,
+      ended = this.ended.orElse(that.ended),
+      genres = this.genres ++ that.genres
+    )
+
   def getTvdbId: Option[Long] =
     guids.find(_.startsWith("tvdb://")).flatMap(_.stripPrefix("tvdb://").toLongOption)
 

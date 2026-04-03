@@ -44,7 +44,8 @@ object PlexTokenSync extends PlexUtils with SonarrUtils with RadarrUtils {
         config.sonarrConfiguration.sonarrBypassIgnored
       )
       allIds = movies ++ series
-      _ <- missingIds(client)(config)(allIds, selfWatchlist ++ othersWatchlist ++ watchlistData)
+      mergedWatchlist = mergeDuplicateItems(selfWatchlist ++ othersWatchlist ++ watchlistData)
+      _ <- missingIds(client)(config)(allIds, mergedWatchlist)
     } yield ()
 
     result

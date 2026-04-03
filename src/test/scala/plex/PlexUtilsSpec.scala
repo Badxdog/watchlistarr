@@ -33,6 +33,9 @@ class PlexUtilsSpec extends AnyFlatSpec with Matchers with PlexUtils with MockFa
     val result = fetchWatchlistFromRss(mockClient)(Uri.unsafeFromString("http://localhost:9090")).unsafeRunSync()
 
     result.size shouldBe 7
+    result.find(_.title == "The Wheel of Time (2021)").map(_.genres) shouldBe Some(
+      Set("drama", "action", "adventure", "fantasy", "sci-fi & fantasy")
+    )
   }
 
   it should "not fail when the list returned is empty" in {
@@ -288,6 +291,19 @@ class PlexUtilsSpec extends AnyFlatSpec with Matchers with PlexUtils with MockFa
       "5d77688b9ab54400214e789b",
       "movie",
       "/library/metadata/5d77688b9ab54400214e789b"
+    )
+  }
+
+  it should "merge duplicate watchlist items and keep genres from richer sources" in {
+    val merged = mergeDuplicateItems(
+      Set(
+        Item("The Test", List("tvdb://372848"), "show"),
+        Item("The Test", List("tvdb://372848"), "show", genres = Set("animation", "anime"))
+      )
+    )
+
+    merged shouldBe Set(
+      Item("The Test", List("tvdb://372848"), "show", genres = Set("animation", "anime"))
     )
   }
 

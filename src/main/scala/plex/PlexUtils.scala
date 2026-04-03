@@ -37,7 +37,7 @@ trait PlexUtils {
         Set.empty
       case Right(json) =>
         logger.debug("Found Json from Plex watchlist, attempting to decode")
-        json.as[Watchlist].map(_.items).getOrElse {
+        json.as[Watchlist].map(_.toItems).getOrElse {
           logger.warn("Unable to fetch watchlist from Plex - decoding failure")
           Set.empty
         }
@@ -227,4 +227,12 @@ trait PlexUtils {
 
   private def cleanKey(path: String): String =
     if (path.endsWith("/children")) path.dropRight(9) else path
+
+  protected def mergeDuplicateItems(items: Set[Item]): Set[Item] =
+    items.foldLeft(Set.empty[Item]) { (acc, item) =>
+      acc.find(_.matches(item)) match {
+        case Some(existing) => (acc - existing) + existing.mergeWith(item)
+        case None           => acc + item
+      }
+    }
 }

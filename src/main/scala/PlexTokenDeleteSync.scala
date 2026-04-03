@@ -34,7 +34,8 @@ object PlexTokenDeleteSync extends PlexUtils with SonarrUtils with RadarrUtils {
         bypass = true
       )
       allIdsWithoutExclusions = moviesWithoutExclusions ++ seriesWithoutExclusions
-      _ <- missingIdsOnPlex(client)(config)(allIdsWithoutExclusions, selfWatchlist ++ othersWatchlist ++ watchlistData)
+      mergedWatchlist = mergeDuplicateItems(selfWatchlist ++ othersWatchlist ++ watchlistData)
+      _ <- missingIdsOnPlex(client)(config)(allIdsWithoutExclusions, mergedWatchlist)
     } yield ()
 
     result
