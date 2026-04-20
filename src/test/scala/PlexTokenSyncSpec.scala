@@ -174,32 +174,6 @@ class PlexTokenSyncSpec extends AnyFlatSpec with Matchers with MockFactory {
                        |    2
                        |  ]
                        |}""".stripMargin
-    val movieToAdd2 =
-      """{
-        |  "title" : "The Twilight Saga: Breaking Dawn - Part 2",
-        |  "tmdbId" : 1151534,
-        |  "qualityProfileId" : 1,
-        |  "rootFolderPath" : "/root/",
-        |  "addOptions" : {
-        |    "searchForMovie" : true
-        |  },
-        |  "tags" : [
-        |    2
-        |  ]
-        |}""".stripMargin
-    val movieToAdd3 =
-      """{
-        |  "title" : "The Twilight Saga: Breaking Dawn - Part 1",
-        |  "tmdbId" : 1151534,
-        |  "qualityProfileId" : 1,
-        |  "rootFolderPath" : "/root/",
-        |  "addOptions" : {
-        |    "searchForMovie" : true
-        |  },
-        |  "tags" : [
-        |    2
-        |  ]
-        |}""".stripMargin
     (httpClient.httpRequest _)
       .expects(
         Method.GET,
@@ -227,24 +201,9 @@ class PlexTokenSyncSpec extends AnyFlatSpec with Matchers with MockFactory {
       )
       .returning(IO.pure(parse("{}")))
       .once()
-    (httpClient.httpRequest _)
-      .expects(
-        Method.POST,
-        Uri.unsafeFromString("https://localhost:7878/api/v3/movie"),
-        Some("radarr-api-key"),
-        parse(movieToAdd2).toOption
-      )
-      .returning(IO.pure(parse("{}")))
-      .once()
-    (httpClient.httpRequest _)
-      .expects(
-        Method.POST,
-        Uri.unsafeFromString("https://localhost:7878/api/v3/movie"),
-        Some("radarr-api-key"),
-        parse(movieToAdd3).toOption
-      )
-      .returning(IO.pure(parse("{}")))
-      .once()
+    // The Twilight fixtures intentionally reuse the same metadata payload/ids as Nowhere.
+    // After mergeDuplicateItems, they collapse into a single movie entry, so one Radarr add
+    // expectation is the correct behavior for this fixture set.
     httpClient
   }
 

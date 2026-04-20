@@ -20,7 +20,15 @@ case class SonarrConfiguration(
     sonarrBypassIgnored: Boolean,
     sonarrSeasonMonitoring: String,
     sonarrLanguageProfileId: Int,
-    sonarrTagIds: Set[Int]
+    sonarrTagIds: Set[Int],
+    sonarrCategoryOverrides: List[SonarrCategoryOverride] = List.empty
+)
+
+case class SonarrCategoryOverride(
+    name: String,
+    genres: Set[String],
+    qualityProfileId: Int,
+    rootFolder: String
 )
 
 case class RadarrConfiguration(

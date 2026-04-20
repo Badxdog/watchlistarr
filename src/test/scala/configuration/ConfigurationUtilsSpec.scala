@@ -167,6 +167,29 @@ class ConfigurationUtilsSpec extends AnyFlatSpec with Matchers with MockFactory 
     config.radarrConfiguration.radarrTagIds shouldBe Set(3)
   }
 
+  it should "build Sonarr category overrides from config" in {
+
+    val mockConfigReader = createMockConfigReader(
+      categoryOverrides = Map(
+        "sonarr.categoryOverrides.anime.genres" -> "Animation,Anime",
+        "sonarr.categoryOverrides.anime.qualityProfile" -> "Plex",
+        "sonarr.categoryOverrides.anime.rootFolder" -> "/data3"
+      )
+    )
+    val mockHttpClient = createMockHttpClient()
+
+    val config = ConfigurationUtils.create(mockConfigReader, mockHttpClient).unsafeRunSync()
+    noException should be thrownBy config
+    config.sonarrConfiguration.sonarrCategoryOverrides shouldBe List(
+      SonarrCategoryOverride(
+        name = "anime",
+        genres = Set("Animation", "Anime"),
+        qualityProfileId = 6,
+        rootFolder = "/data3"
+      )
+    )
+  }
+
   private def createMockConfigReader(
       sonarrApiKey: Option[String] = Some("sonarr-api-key"),
       sonarrRootFolder: Option[String] = None,
@@ -176,7 +199,8 @@ class ConfigurationUtilsSpec extends AnyFlatSpec with Matchers with MockFactory 
       plexWatchlist2: Option[String] = None,
       plexToken: Option[String] = Some("test-token"),
       qualityProfile: Option[String] = None,
-      tags: Option[String] = None
+      tags: Option[String] = None,
+      categoryOverrides: Map[String, String] = Map.empty
   ): ConfigurationReader = {
     val unset = None
 
@@ -204,6 +228,10 @@ class ConfigurationUtilsSpec extends AnyFlatSpec with Matchers with MockFactory 
     (mockConfigReader.getConfigOption _).expects(Keys.sonarrTags).returning(tags).anyNumberOfTimes()
     (mockConfigReader.getConfigOption _).expects(Keys.radarrTags).returning(tags).anyNumberOfTimes()
     (mockConfigReader.getConfigOption _).expects(Keys.deleteFiles).returning(unset).anyNumberOfTimes()
+    (mockConfigReader.getConfigOptionsWithPrefix _)
+      .expects(s"${Keys.sonarrCategoryOverrides}.")
+      .returning(categoryOverrides)
+      .anyNumberOfTimes()
     mockConfigReader
   }
 

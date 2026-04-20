@@ -1,6 +1,7 @@
 package sonarr
 
 import cats.effect.IO
+import configuration.{SonarrCategoryOverride, SonarrConfiguration}
 import http.HttpClient
 import cats.effect.unsafe.implicits.global
 import io.circe.parser._
@@ -91,5 +92,62 @@ class SonarrUtilsSpec extends AnyFlatSpec with Matchers with SonarrUtils with Mo
         .unsafeRunSync()
 
     eitherResult shouldBe Right(Set.empty)
+  }
+
+  it should "use a category override when the Plex genres match" in {
+    val mockClient = mock[HttpClient]
+    val config = SonarrConfiguration(
+      sonarrBaseUrl = Uri.unsafeFromString("http://localhost:8989"),
+      sonarrApiKey = "sonarr-api-key",
+      sonarrQualityProfileId = 6,
+      sonarrRootFolder = "/data/media/tv",
+      sonarrBypassIgnored = false,
+      sonarrSeasonMonitoring = "all",
+      sonarrLanguageProfileId = 1,
+      sonarrTagIds = Set(3),
+      sonarrCategoryOverrides = List(
+        SonarrCategoryOverride(
+          name = "anime",
+          genres = Set("Animation", "Anime"),
+          qualityProfileId = 11,
+          rootFolder = "/data/media/anime"
+        )
+      )
+    )
+    val item = Item(
+      "The Test",
+      List("tvdb://372848"),
+      "show",
+      genres = Set("Documentary", "Animation")
+    )
+    val expectedJson =
+      """{
+        |  "title" : "The Test",
+        |  "tvdbId" : 372848,
+        |  "qualityProfileId" : 11,
+        |  "rootFolderPath" : "/data/media/anime",
+        |  "addOptions" : {
+        |    "monitor" : "all",
+        |    "searchForCutoffUnmetEpisodes" : true,
+        |    "searchForMissingEpisodes" : true
+        |  },
+        |  "languageProfileId" : 1,
+        |  "monitored" : true,
+        |  "tags" : [
+        |    3
+        |  ]
+        |}""".stripMargin
+
+    (mockClient.httpRequest _)
+      .expects(
+        Method.POST,
+        Uri.unsafeFromString("http://localhost:8989").withPath(Uri.Path.unsafeFromString("/api/v3/series")),
+        Some("sonarr-api-key"),
+        parse(expectedJson).toOption
+      )
+      .returning(IO.pure(parse("{}")))
+      .once()
+
+    addToSonarr(mockClient)(config)(item).unsafeRunSync()
   }
 }

@@ -37,7 +37,7 @@ trait PlexUtils {
         Set.empty
       case Right(json) =>
         logger.debug("Found Json from Plex watchlist, attempting to decode")
-        json.as[Watchlist].map(_.items).getOrElse {
+        json.as[Watchlist].map(_.toItems).getOrElse {
           logger.warn("Unable to fetch watchlist from Plex - decoding failure")
           Set.empty
         }
@@ -213,15 +213,26 @@ trait PlexUtils {
       .unsafeFromString(s"https://discover.provider.plex.tv$key")
       .withQueryParam("X-Plex-Token", config.plexTokens.headOption.getOrElse("unknown"))
 
-    val guids: EitherT[IO, Throwable, List[String]] = for {
+    val metadata: EitherT[IO, Throwable, TokenWatchlist] = for {
       response <- EitherT(client.httpRequest(Method.GET, url))
       result   <- EitherT(IO.pure(response.as[TokenWatchlist])).leftMap(err => new Throwable(err))
-      guids = result.MediaContainer.Metadata.flatMap(_.Guid.map(_.id))
-    } yield guids
+    } yield result
 
-    guids.map(ids => Item(i.title, ids, i.`type`, ended = None))
+    metadata.map { result =>
+      val ids    = result.MediaContainer.Metadata.flatMap(_.Guid.map(_.id))
+      val genres = result.MediaContainer.Metadata.flatMap(_.Genre.map(_.tag)).toSet
+      Item(i.title, ids, i.`type`, ended = None, genres = genres)
+    }
   }
 
   private def cleanKey(path: String): String =
     if (path.endsWith("/children")) path.dropRight(9) else path
+
+  protected def mergeDuplicateItems(items: Set[Item]): Set[Item] =
+    items.foldLeft(Set.empty[Item]) { (acc, item) =>
+      acc.find(_.matches(item)) match {
+        case Some(existing) => (acc - existing) + existing.mergeWith(item)
+        case None           => acc + item
+      }
+    }
 }

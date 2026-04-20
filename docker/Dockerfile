@@ -18,7 +18,7 @@ WORKDIR /app
 
 COPY --from=build /app/target/universal/stage /app
 
-COPY --chmod=755 docker/entrypoint.sh /app/entrypoint.sh
-RUN sed -i 's/\r$//' /app/entrypoint.sh
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN sed -i 's/\r$//' /app/entrypoint.sh && chmod 755 /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
